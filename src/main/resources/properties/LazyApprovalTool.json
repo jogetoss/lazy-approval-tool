@@ -1,0 +1,36 @@
+[
+    {
+        "title": "@@org.joget.marketplace.lazyapprovaltool.config@@",
+        "properties": [
+            {
+                "name": "formDefId",
+                "label": "@@org.joget.marketplace.lazyapprovaltool.formDefId@@",
+                "type": "selectbox",
+                "required": "True",
+                "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
+            },
+            {
+                "name":"processId",
+                "label":"@@org.joget.marketplace.lazyapprovaltool.process@@",
+                "type":"selectbox",
+                "required":"true",
+                "options_ajax":"[CONTEXT_PATH]/web/json/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getProcesses"
+            },
+            {
+                "name":"activityDefId",
+                "label":"@@org.joget.marketplace.lazyapprovaltool.activity@@",
+                "type":"multiselect",
+                "size":"10",
+                "required":"true",
+                "options_ajax_on_change":"processId",
+                "options_ajax":"[CONTEXT_PATH]/web/json/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getActivities"
+            },
+            {
+                "name":"wfVariable",
+                "label":"@@org.joget.marketplace.lazyapprovaltool.wfVariable@@",
+                "type":"selectbox",
+                "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/workflowVariable/options"
+            }
+        ]
+    }
+]

@@ -1,6 +1,6 @@
 # Description
 
-This repository is meant to serve as a general template for how to set up new repositories in the JogetOSS organization. 
+This plugin is intended to use for lazy assignment approval using URL. A sample use case will be sending the URL via Email, then the approver will click on Approve URL / Reject URL to directly approve / reject the assignment.
 
 # Getting Help
 
