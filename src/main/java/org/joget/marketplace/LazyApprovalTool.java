@@ -1,15 +1,11 @@
 package org.joget.marketplace;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -17,12 +13,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.io.FileUtils;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
-import org.joget.apps.app.model.AuditTrail;
 import org.joget.apps.app.model.FormDefinition;
-import org.joget.apps.app.model.PackageActivityForm;
 import org.joget.apps.app.model.PackageDefinition;
 import org.joget.apps.app.service.AppPluginUtil;
 import org.joget.apps.app.service.AppService;
@@ -32,12 +25,8 @@ import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormService;
-import org.joget.apps.form.service.FormUtil;
-import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
-import org.joget.commons.util.UuidGenerator;
 import org.joget.plugin.base.DefaultApplicationPlugin;
-import org.joget.plugin.base.DefaultAuditTrailPlugin;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowAssignment;
@@ -46,7 +35,6 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.model.service.WorkflowUserManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.context.ApplicationContext;
 
 
@@ -147,10 +135,14 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
         String popupFormId = request.getParameter("popupFormId");
         String wfVariable = "";
 
-        AppService appService = (AppService) FormUtil.getApplicationContext().getBean("appService");
-        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+        String appId = request.getParameter("appId");
+        String appVersion = request.getParameter("appVersion");
+        ApplicationContext ac = AppUtil.getApplicationContext();
+        AppService appService = (AppService) ac.getBean("appService");
+        WorkflowManager workflowManager = (WorkflowManager) ac.getBean("workflowManager");
+        AppDefinition appDef = appService.getAppDefinition(appId, appVersion);
+
         WorkflowUserManager workflowUserManager = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
-        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
         FormService formService = (FormService) AppUtil.getApplicationContext().getBean("formService");
         PackageDefinition packageDef = appDef.getPackageDefinition();
 
@@ -214,8 +206,6 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
             return;
         }
 
-        String appVersion = String.valueOf(appDef.getVersion());
-        String appId = appDef.getAppId();
         FormRow row = new FormRow();
         FormRowSet rowSet = appService.loadFormData(appId, appVersion, popupFormId, id);
         if (rowSet != null && !rowSet.isEmpty()) {

@@ -14,7 +14,7 @@
                 "label":"@@org.joget.marketplace.lazyapprovaltool.process@@",
                 "type":"selectbox",
                 "required":"true",
-                "options_ajax":"[CONTEXT_PATH]/web/json/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getProcesses"
+                "options_ajax":"[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getProcesses"
             },
             {
                 "name":"activityDefId",
@@ -23,7 +23,7 @@
                 "size":"10",
                 "required":"true",
                 "options_ajax_on_change":"processId",
-                "options_ajax":"[CONTEXT_PATH]/web/json/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getActivities"
+                "options_ajax":"[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getActivities"
             },
             {
                 "name":"wfVariable",
