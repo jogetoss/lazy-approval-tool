@@ -1,11 +1,16 @@
 package org.joget.marketplace;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -13,10 +18,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.io.FileUtils;
 import org.joget.apps.app.dao.FormDefinitionDao;
+import org.joget.apps.app.dao.UserReplacementDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.model.PackageDefinition;
+import org.joget.apps.app.model.UserReplacement;
 import org.joget.apps.app.service.AppPluginUtil;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
@@ -25,7 +33,14 @@ import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormService;
+import org.joget.apps.form.service.FormUtil;
+import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
+import org.joget.commons.util.SecurityUtil;
+import org.joget.commons.util.StringUtil;
+import org.joget.commons.util.UuidGenerator;
+import org.joget.directory.model.User;
+import org.joget.directory.model.service.DirectoryManager;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.WorkflowActivity;
@@ -35,6 +50,7 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.model.service.WorkflowUserManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.context.ApplicationContext;
 
 
@@ -88,8 +104,10 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
         String formDefId = (String) map.get("formDefId");
         String processId = (String) map.get("processId");
         String activityDefId = (String) map.get("activityDefId");
-        String wfVariable = (String) map.get("wfVariable");
-
+        String wfVariableStatus = (String) map.get("wfVariableStatus");
+        String assignee = (String) map.get("assignee");
+        JSONObject jsonParams = new JSONObject();
+        
         String recordId;
         WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
         if (wfAssignment != null) {
@@ -98,25 +116,37 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
             recordId = (String)properties.get("recordId");
         }
 
+        // get user from participant ID
+        if ((assignee != null && assignee.trim().length() != 0)) {
+            Collection<String> userList = getUserList(assignee, wfAssignment, appDef);
+            for (String user : userList) {
+                assignee = user;
+            }
+        }
+
         String primaryKey = null;
 
         if (formDefId != null) {
             try {
                 primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
              
-                String assignmentURL = getServerUrl() + "/jw/web/json/app/" + appDef.getId() + "/" + appDef.getVersion().toString()
-                + "/plugin/" + getClassName() + "/service?&id=" + primaryKey
-                + "&processId=" + processId
-                + "&activityDefId=" + activityDefId
-                + "&popupFormId=" + formDefId;
-                String assignmentURL_approved = assignmentURL + "&" + wfVariable + "=approved";
-                String assignmentURL_rejected = assignmentURL + "&" + wfVariable + "=rejected";
+                jsonParams.put("id", primaryKey);
+                jsonParams.put("processId", processId);
+                jsonParams.put("activityDefId", activityDefId);
+                jsonParams.put("formDefId", formDefId);
+                jsonParams.put("assignee", assignee);
 
+                String params = StringUtil.escapeString(SecurityUtil.encrypt(jsonParams.toString()), StringUtil.TYPE_URL, null);
+
+                String assignmentURL = getServerUrl() + "/jw/web/json/app/" + appDef.getId() + "/" + appDef.getVersion().toString() + "/plugin/" + getClassName() + "/service?action=lazyApproval&params=" + params;
+                String assignmentURL_approved = assignmentURL + "&" + wfVariableStatus + "=approved";
+                String assignmentURL_rejected = assignmentURL + "&" + wfVariableStatus + "=rejected";
+              
                 FormRowSet set = new FormRowSet();
                 FormRow r1 = new FormRow();
                 r1.put("assignment_URL_approved", assignmentURL_approved);
                 r1.put("assignment_URL_rejected", assignmentURL_rejected);
-                r1.put("wfVariable", wfVariable);
+                r1.put("wfVariableStatus", wfVariableStatus);
                 set.add(r1);
                 appService.storeFormData(appDef.getAppId(), appDef.getVersion().toString(), formDefId, set, recordId);
             } catch (Exception ex) {
@@ -129,11 +159,7 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
     @Override
     public void webService(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
-        String id = request.getParameter("id");
-        String processId = request.getParameter("processId");
-        String activityDefId = request.getParameter("activityDefId");
-        String popupFormId = request.getParameter("popupFormId");
-        String wfVariable = "";
+        String wfVariableStatus = "";
 
         String appId = request.getParameter("appId");
         String appVersion = request.getParameter("appVersion");
@@ -179,6 +205,8 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                 empty.put("label", "");
                 jsonArray.put(empty);
 
+                String processId = request.getParameter("processId");
+
                 if (!"null".equalsIgnoreCase(processId) && !processId.isEmpty()) {
                     String processDefId = "";
                     if (appDef != null) {
@@ -204,40 +232,33 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                 LogUtil.error(this.getClass().getName(), ex, "Get activity options Error!");
             }
             return;
-        }
+        } else if ("lazyApproval".equals(action)) {
+            String params = SecurityUtil.decrypt(request.getParameter("params"));
+            JSONObject jsonParams = new JSONObject(params);
+            String id = jsonParams.getString("id");
+            String processId = jsonParams.getString("processId");
+            String activityDefId = jsonParams.getString("activityDefId");
+            String formDefId = jsonParams.getString("formDefId");
+            String assignee = jsonParams.getString("assignee");
 
-        FormRow row = new FormRow();
-        FormRowSet rowSet = appService.loadFormData(appId, appVersion, popupFormId, id);
-        if (rowSet != null && !rowSet.isEmpty()) {
-            row = rowSet.get(0);
-            wfVariable = row.getProperty("wfVariable");
-        }
+            FormRow row = new FormRow();
+            FormRowSet rowSet = appService.loadFormData(appId, appVersion, formDefId, id);
+            if (rowSet != null && !rowSet.isEmpty()) {
+                row = rowSet.get(0);
+                wfVariableStatus = row.getProperty("wfVariableStatus");
+            }
 
-        String status = request.getParameter(wfVariable);
+            String status = request.getParameter(wfVariableStatus);
 
-        if (status != null && !status.isEmpty()) {
-            String username = workflowUserManager.getCurrentUsername();
-            FormData formData = null;
-            Form form = getForm(popupFormId);
-            if (form != null && form.getStoreBinder() != null) {
+            if (status != null && !status.isEmpty()) {
                 String msg = "";
                 try {
-                    WorkflowAssignment assignment = null; // workflowManager.getAssignmentByProcess(processId);
-                    Collection<WorkflowAssignment> assignments;
-
-                    assignment = workflowManager.getAssignmentByRecordId(id, packageDef.getId() + "#%#" + processId, activityDefId, username);
+                    WorkflowAssignment assignment = null;
+                    assignment = workflowManager.getAssignmentByRecordId(id, packageDef.getId() + "#%#" + processId, activityDefId, assignee);
 
                     if (assignment != null) {
-                        // matching assignment found
-
-                        // accept assignment
-                        if (!assignment.isAccepted()) {
-                            workflowManager.assignmentAccept(assignment.getActivityId());
-                        }
-
-                        workflowManager.activityVariable(assignment.getActivityId(),wfVariable, status);
-                        // complete assignment
-                        workflowManager.assignmentComplete(assignment.getActivityId());
+                        workflowManager.activityVariable(assignment.getActivityId(),wfVariableStatus, status);
+                        workflowManager.assignmentForceComplete(assignment.getProcessDefId(), assignment.getProcessId(), assignment.getActivityId(), assignee);
 
                         msg = "Assignment [" + id + "] Completed. You can now close this window.";
                         LogUtil.info(getClassName(), msg);
@@ -254,6 +275,7 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                 response.setContentType("text/html");
                 PrintWriter out = response.getWriter();
                 out.print(msg);
+
             }
         }
     }
@@ -293,6 +315,117 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
             }
         }
         return form;
+    }
+
+    protected FormData getFormData(String json, String recordId, String processId, Form form) {
+        try {
+            FormData formData = new FormData();
+            formData.setPrimaryKeyValue(recordId);
+            formData.setProcessId(processId);
+
+            FormRowSet rows = new FormRowSet();
+            FormRow row = new FormRow();
+            rows.add(row);
+
+            JSONObject jsonObject = new JSONObject(json);
+            for(Iterator iterator = jsonObject.keys(); iterator.hasNext();) {
+                String key = (String) iterator.next();
+                if (FormUtil.PROPERTY_TEMP_REQUEST_PARAMS.equals(key)) {
+                    JSONObject tempRequestParamMap = jsonObject.getJSONObject(FormUtil.PROPERTY_TEMP_REQUEST_PARAMS);
+                    JSONArray tempRequestParams = tempRequestParamMap.names();
+                    if (tempRequestParams != null && tempRequestParams.length() > 0) {
+                        for (int l = 0; l < tempRequestParams.length(); l++) {                        
+                            List<String> rpValues = new ArrayList<String>();
+                            String rpKey = tempRequestParams.getString(l);
+                            JSONArray tempValues = tempRequestParamMap.getJSONArray(rpKey);
+                            if (tempValues != null && tempValues.length() > 0) {
+                                for (int m = 0; m < tempValues.length(); m++) {
+                                    rpValues.add(tempValues.getString(m));
+                                }
+                            }
+                            formData.addRequestParameterValues(rpKey, rpValues.toArray(new String[]{}));
+                        }
+                    }
+                } else if (FormUtil.PROPERTY_TEMP_FILE_PATH.equals(key)) {
+                    JSONObject tempFileMap = jsonObject.getJSONObject(FormUtil.PROPERTY_TEMP_FILE_PATH);
+                    JSONArray tempFiles = tempFileMap.names();
+                    if (tempFiles != null && tempFiles.length() > 0) {
+                        for (int l = 0; l < tempFiles.length(); l++) {                        
+                            List<String> rpValues = new ArrayList<String>();
+                            String rpKey = tempFiles.getString(l);
+                            JSONArray tempValues = tempFileMap.getJSONArray(rpKey);
+                            if (tempValues != null && tempValues.length() > 0) {
+                                for (int m = 0; m < tempValues.length(); m++) {
+                                    String path = tempValues.getString(m);
+                                    File file = FileManager.getFileByPath(path);
+                                    if (file != null & file.exists()) {
+                                        String newPath = UuidGenerator.getInstance().getUuid() + File.separator + file.getName();
+                                        FileUtils.copyFile(file, new File(FileManager.getBaseDirectory(), newPath));
+                                        rpValues.add(newPath);
+                                    }
+                                }
+                            }
+                            row.putTempFilePath(rpKey, rpValues.toArray(new String[]{}));
+                        }
+                    }
+                } else {
+                    String value = jsonObject.getString(key);
+                    row.setProperty(key, value);
+                }
+            }
+            row.setId(recordId);
+            formData.setStoreBinderData(form.getStoreBinder(), rows);
+            return formData;
+        } catch (Exception e) {
+            LogUtil.error(getClassName(), e, processId);
+            return null;
+        }
+    }
+
+    public static Collection<String> getUserList(String toParticipantId, WorkflowAssignment wfAssignment, AppDefinition appDef) {
+        Collection<String> addresses = new HashSet<String>();
+        Collection<String> users = new HashSet<String>();
+
+        if (toParticipantId != null && !toParticipantId.isEmpty() && wfAssignment != null) {
+            WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+            WorkflowProcess process = workflowManager.getProcess(wfAssignment.getProcessDefId());
+            toParticipantId = toParticipantId.replace(";", ",");
+            String pIds[] = toParticipantId.split(",");
+            for (String pId : pIds) {
+                pId = pId.trim();
+                if (pId.length() == 0) {
+                    continue;
+                }
+
+                Collection<String> userList = null;
+                userList = WorkflowUtil.getAssignmentUsers(process.getPackageId(), wfAssignment.getProcessDefId(), wfAssignment.getProcessId(), wfAssignment.getProcessVersion(), wfAssignment.getActivityId(), "", pId.trim());
+
+                if (userList != null && userList.size() > 0) {
+                    users.addAll(userList);
+                }
+            }
+            
+            //send to replacement user
+            if (!users.isEmpty()) {
+                Collection<String> userList = new HashSet<String>();
+                String args[] = wfAssignment.getProcessDefId().split("#");
+                
+                for (String u : users) {
+                    UserReplacementDao urDao = (UserReplacementDao) AppUtil.getApplicationContext().getBean("userReplacementDao");
+                    Collection<UserReplacement> replaces = urDao.getUserTodayReplacedBy(u, args[0], args[2]);
+                    if (replaces != null && !replaces.isEmpty()) {
+                        for (UserReplacement ur : replaces) {
+                            userList.add(ur.getReplacementUser());
+                        }
+                    }
+                }
+                
+                if (userList.size() > 0) {
+                    users.addAll(userList);
+                }
+            }
+        }
+        return users;
     }
 
 }

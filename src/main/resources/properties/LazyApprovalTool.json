@@ -26,8 +26,13 @@
                 "options_ajax":"[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.marketplace.LazyApprovalTool/service?action=getActivities"
             },
             {
-                "name":"wfVariable",
-                "label":"@@org.joget.marketplace.lazyapprovaltool.wfVariable@@",
+                "name":"assignee",
+                "label":"@@org.joget.marketplace.lazyapprovaltool.assignee@@",
+                "type":"textfield"            
+            },
+            {
+                "name":"wfVariableStatus",
+                "label":"@@org.joget.marketplace.lazyapprovaltool.wfVariableStatus@@",
                 "type":"selectbox",
                 "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/workflowVariable/options"
             }
