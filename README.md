@@ -2,6 +2,8 @@
 
 This plugin is intended to use for lazy assignment approval using URL. A sample use case will be sending the URL via Email, then the approver will click on Approve URL / Reject URL to directly approve / reject the assignment.
 
+To setup and configure this plugin, please see the [documentation](https://dev.joget.org/community/display/marketplace/Lazy+Approval+Tool+Plugin).
+
 # Getting Help
 
 JogetOSS is a community-led team for open source software related to the [Joget](https://www.joget.org) no-code/low-code application platform.
