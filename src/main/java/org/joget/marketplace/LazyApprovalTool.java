@@ -255,14 +255,17 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                         workflowManager.activityVariable(assignment.getActivityId(),wfVariableStatus, status);
                         workflowManager.assignmentForceComplete(assignment.getProcessDefId(), assignment.getProcessId(), assignment.getActivityId(), assignee);
 
-                        msg = "Assignment for " + activityDefId + " completed. You can now close this window.";
+                        msg = "Assignment completed. <br><br>Assignment details: <br> Record Id: " + id + "<br> Process Id: " + processId + "<br> Activity Id: " + activityDefId + 
+                        "<br> Process Name: " + assignment.getProcessName() + "<br> Activity Name: " + assignment.getActivityName() + "<br><br>You can now close this window.";
                         LogUtil.info(getClassName(), msg);
                     } else {
-                        msg = "Assignment for " + activityDefId + " not found. You can now close this window.";
+                        msg = "Assignment not found. <br><br>Assignment details: <br> Record Id: " + id + "<br>Process Id: " + processId + "<br> Activity Id: " + activityDefId 
+                        + "<br><br>You can now close this window.";
                         LogUtil.info(getClassName(), msg);
                     }
                 } catch (Exception e) {
-                    msg = "Assignment for " + activityDefId + " failed to complete. You can now close this window.";
+                    msg = "Assignment failed to complete. <br><br>Assignment details: <br> Record Id: " + id + "<br> Process Id: " + processId + "<br> Activity Id: " + activityDefId 
+                    + "<br><br>You can now close this window.";
                     LogUtil.error(getClassName(), e, msg);
 
                 }
