@@ -39,8 +39,6 @@ import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.StringUtil;
 import org.joget.commons.util.UuidGenerator;
-import org.joget.directory.model.User;
-import org.joget.directory.model.service.DirectoryManager;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.WorkflowActivity;
@@ -167,9 +165,6 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
         AppService appService = (AppService) ac.getBean("appService");
         WorkflowManager workflowManager = (WorkflowManager) ac.getBean("workflowManager");
         AppDefinition appDef = appService.getAppDefinition(appId, appVersion);
-
-        WorkflowUserManager workflowUserManager = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
-        FormService formService = (FormService) AppUtil.getApplicationContext().getBean("formService");
         PackageDefinition packageDef = appDef.getPackageDefinition();
 
         if ("getProcesses".equals(action)) {
