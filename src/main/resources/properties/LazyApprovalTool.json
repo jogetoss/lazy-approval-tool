@@ -28,12 +28,14 @@
             {
                 "name":"assignee",
                 "label":"@@org.joget.marketplace.lazyapprovaltool.assignee@@",
-                "type":"textfield"            
+                "type":"textfield",
+                "required": "True"
             },
             {
                 "name":"wfVariableStatus",
                 "label":"@@org.joget.marketplace.lazyapprovaltool.wfVariableStatus@@",
                 "type":"selectbox",
+                "required": "True",
                 "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/workflowVariable/options"
             }
         ]
