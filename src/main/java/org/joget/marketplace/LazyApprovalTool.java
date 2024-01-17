@@ -49,6 +49,7 @@ import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.context.ApplicationContext;
+import org.springframework.security.access.method.P;
 
 
 public class LazyApprovalTool extends DefaultApplicationPlugin implements PluginWebSupport{
@@ -103,7 +104,12 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
         String activityDefId = (String) map.get("activityDefId");
         String wfVariableStatus = (String) map.get("wfVariableStatus");
         String assignee = (String) map.get("assignee");
+        String showPopupAfterAction = (String) map.get("showPopupAfterAction");
         JSONObject jsonParams = new JSONObject();
+
+        if (showPopupAfterAction == null || showPopupAfterAction.isEmpty()) {
+            showPopupAfterAction = "false";
+        }
         
         String recordId;
         WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
@@ -132,6 +138,7 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                 jsonParams.put("activityDefId", activityDefId);
                 jsonParams.put("formDefId", formDefId);
                 jsonParams.put("assignee", assignee);
+                jsonParams.put("showPopupAfterAction", showPopupAfterAction);
 
                 String params = StringUtil.escapeString(SecurityUtil.encrypt(jsonParams.toString()), StringUtil.TYPE_URL, null);
 
@@ -234,6 +241,7 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
             String activityDefId = jsonParams.getString("activityDefId");
             String formDefId = jsonParams.getString("formDefId");
             String assignee = jsonParams.getString("assignee");
+            String showPopupAfterAction = jsonParams.getString("showPopupAfterAction");
 
             FormRow row = new FormRow();
             FormRowSet rowSet = appService.loadFormData(appId, appVersion, formDefId, id);
@@ -242,6 +250,7 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                 wfVariableStatus = row.getProperty("wfVariableStatus");
             }
 
+        
             String status = request.getParameter(wfVariableStatus);
 
             if (status != null && !status.isEmpty()) {
@@ -267,6 +276,12 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
                     + "<br><br>You can now close this window.";
                     LogUtil.error(getClassName(), e, msg);
 
+                }
+
+                if (showPopupAfterAction.equals("false")){
+                    msg += "<script type=\"text/javascript\">";
+                    msg += "window.onload = function() { window.close(); };";
+                    msg += "</script>";
                 }
 
                 response.setContentType("text/html");
