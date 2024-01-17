@@ -42,7 +42,6 @@
                 "name" : "showPopupAfterAction",
                 "label" : "@@org.joget.marketplace.lazyapprovaltool.showPopupAfterAction@@",
                 "type" : "checkbox",
-                "description" : "@@org.joget.marketplace.lazyapprovaltool.showPopupAfterAction.desc@@",
                 "options" : [{
                   "label" : "",
                   "value" : "true"
