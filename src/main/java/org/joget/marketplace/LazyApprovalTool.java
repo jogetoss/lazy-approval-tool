@@ -112,11 +112,11 @@ public class LazyApprovalTool extends DefaultApplicationPlugin implements Plugin
         }
         
         String recordId;
-        WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
+        WorkflowAssignment wfAssignment = (WorkflowAssignment) map.get("workflowAssignment");
         if (wfAssignment != null) {
             recordId = appService.getOriginProcessId(wfAssignment.getProcessId());
         } else {
-            recordId = (String)properties.get("recordId");
+            recordId = (String)map.get("recordId");
         }
 
         // get user from participant ID
