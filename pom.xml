@@ -4,7 +4,7 @@
     <groupId>org.joget.marketplace</groupId>
     <artifactId>lazy-approval-tool</artifactId>
     <packaging>bundle</packaging>
-    <version>8.0.6</version>
+    <version>8.0.7</version>
     <name>lazy-approval-tool</name>
     <url>http://www.joget.org</url>
     <build>
